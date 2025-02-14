@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>유리수 순환소수 빈출 (4)</title>
+<style>
+  body {
+    background-color: #ffffff;
+    color: #000000;
+    font-family: sans-serif;
+    margin: 20px;
+  }
+  #gameContainer, #endScreen {
+    display: none;
+  }
+  .energyBar {
+    width: 200px;
+    height: 20px;
+    background-color: #ccc;
+    position: relative;
+    margin: 10px 0;
+  }
+  .energyFill {
+    height: 100%;
+    background-color: #000;
+    width: 100%;
+  }
+  .choiceBtn {
+    display: block;
+    margin: 5px 0;
+  }
+  #nextBtn:disabled {
+    opacity: 0.5;
+  }
+</style>
+
+<!-- MathJax for LaTeX rendering -->
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" defer></script>
+
+<script>
+// 문제 목록 (총 20문항). 각 문항은 다음 형태:
+// {
+//   question: "질문(LaTeX 포함)",
+//   choices: ["보기1","보기2","보기3","보기4","보기5"],
+//   correctIndex: 정답(0~4),
+// }
+//
+// ※ '유형 C'의 세 문제를 아래와 같이 교정했습니다.
+const questionsData = [
+  // --- 유형 A (a+b 유형) ---
+  {
+    question: "\\(\\dfrac{2}{27}\\)을 소수로 나타내었을 때, 순환마디의 자리수를 a, 소수점 아래 10번째 자리의 숫자를 b라 할 때, a+b는?",
+    choices: ["2", "3", "4", "5", "6"],
+    correctIndex: 1 // 예: 3
+  },
+  {
+    question: "\\(\\dfrac{4}{37}\\)을 소수로 나타내었을 때, 순환마디의 자리수를 a, 소수점 아래 16번째 자리 숫자를 b라 할 때, a+b는?",
+    choices: ["2", "3", "4", "5", "6"],
+    correctIndex: 2 // 예: 4
+  },
+  {
+    question: "\\(\\dfrac{5}{37}\\)을 소수로 나타내었을 때, 순환마디의 자리수를 a, 소수점 아래 25번째 자리 숫자를 b라 할 때, a+b는?",
+    choices: ["2", "3", "4", "5", "6"],
+    correctIndex: 2 // 예: 4
+  },
+  {
+    question: "\\(\\dfrac{7}{13}\\)을 소수로 나타내었을 때, 순환마디의 자리수를 a, 소수점 아래 13번째 자리 숫자를 b라 할 때, a+b는?",
+    choices: ["8", "9", "10", "11", "12"],
+    correctIndex: 3 // 예: 11
+  },
+  {
+    question: "\\(\\dfrac{3}{11}\\)을 소수로 나타내었을 때, 순환마디의 자리수를 a, 소수점 아래 15번째 자리 숫자를 b라 할 때, a+b는?",
+    choices: ["2", "3", "4", "5", "6"],
+    correctIndex: 2 // 예: 4
+  },
+
+  // --- 유형 B (일정 구간 자리수 합) ---
+  {
+    question: "\\(\\dfrac{1}{11}\\)을 소수로 나타내었을 때, 소수점 아래 첫째 자리부터 10번째 자리까지의 숫자 합은?",
+    choices: ["36", "37", "45", "54", "63"],
+    correctIndex: 2 // 예: 45
+  },
+  {
+    question: "\\(\\dfrac{1}{27}\\)을 소수로 나타내었을 때, 소수점 아래 첫째 자리부터 12번째 자리까지의 숫자 합은?",
+    choices: ["30", "40", "45", "50", "60"],
+    correctIndex: 1 // 예: 40
+  },
+  {
+    question: "\\(\\dfrac{1}{7}\\)을 소수로 나타내었을 때, 소수점 아래 첫째 자리부터 12번째 자리까지의 숫자 합은?",
+    choices: ["45", "46", "54", "55", "56"],
+    correctIndex: 2 // 예: 54
+  },
+  {
+    question: "\\(\\dfrac{1}{13}\\)을 소수로 나타내었을 때, 소수점 아래 첫째 자리부터 18번째 자리까지의 숫자 합은?",
+    choices: ["54", "72", "81", "90", "99"],
+    correctIndex: 2 // 예: 81
+  },
+  {
+    question: "\\(\\dfrac{1}{37}\\)을 소수로 나타내었을 때, 소수점 아래 첫째 자리부터 9번째 자리까지의 숫자 합은?",
+    choices: ["18", "24", "27", "30", "36"],
+    correctIndex: 2 // 예: 27
+  },
+
+  // --- 유형 C (반복소수 만드는 a의 합) ---
+  {
+    question: "\\(\\dfrac{14}{2^2 \\times 5 \\times a}\\)가 순환소수가 되도록 하는 한 자리 자연수 a 모두 더한 값은?",
+    choices: ["16", "17", "18", "19", "20"],
+    correctIndex: 2 // 18 (정상)
+  },
+  {
+    question: "\\(\\dfrac{21}{2^2 \\times 5 \\times a}\\)가 순환소수가 되도록 하는 한 자리 자연수 a 모두 더한 값은?",
+    // 수정: 올바른 답 = 9
+    choices: ["7", "8", "9", "12", "15"],
+    correctIndex: 2 // "9"
+  },
+  {
+    question: "\\(\\dfrac{5}{2 \\times 5 \\times a}\\)가 순환소수가 되도록 하는 한 자리 자연수 a 모두 더한 값은?",
+    choices: ["21", "22", "23", "24", "25"],
+    correctIndex: 4 // 25 (정상)
+  },
+  {
+    question: "\\(\\dfrac{9}{2^3 \\times 5 \\times a}\\)가 순환소수가 되도록 하는 한 자리 자연수 a 모두 더한 값은?",
+    // 수정: 올바른 답 = 7
+    choices: ["7", "9", "11", "13", "15"],
+    correctIndex: 0 // "7"
+  },
+  {
+    question: "\\(\\dfrac{12}{2^2 \\times 5 \\times a}\\)가 순환소수가 되도록 하는 한 자리 자연수 a 모두 더한 값은?",
+    // 수정: 올바른 답 = 16
+    choices: ["15", "16", "18", "20", "21"],
+    correctIndex: 1 // "16"
+  },
+
+  // --- 유형 D (가장 편리한 식 고르기) ---
+  {
+    question: "순환소수 \\(x = 0.4\\dot{3}\\)를 분수로 나타낼 때 가장 편리한 식은?",
+    choices: [
+      "\\(10x - x\\)",
+      "\\(100x - x\\)",
+      "\\(100x - 10x\\)",
+      "\\(1000x - x\\)",
+      "\\(1000x - 10x\\)"
+    ],
+    correctIndex: 2 // (100x - 10x)
+  },
+  {
+    question: "순환소수 \\(x = 1.25\\dot{6}\\dot{4}\\)를 분수로 나타낼 때 가장 편리한 식은?",
+    choices: [
+      "\\(10x - x\\)",
+      "\\(100x - x\\)",
+      "\\(1000x - x\\)",
+      "\\(10000x - 100x\\)",
+      "\\(10000x - 10x\\)"
+    ],
+    correctIndex: 3 // (10000x - 100x)
+  },
+  {
+    question: "순환소수 \\(x = 3.012\\dot{7}\\)를 분수로 나타낼 때 가장 편리한 식은?",
+    choices: [
+      "\\(100x - x\\)",
+      "\\(1000x - 10x\\)",
+      "\\(10000x - 10x\\)",
+      "\\(10000x - 1000x\\)",
+      "\\(1000x - 100x\\)"
+    ],
+    correctIndex: 3 // (10000x - 1000x)
+  },
+  {
+    question: "순환소수 \\(x = 0.18\\dot{4}\\dot{5}\\)를 분수로 나타낼 때 가장 편리한 식은?",
+    choices: [
+      "\\(1000x - x\\)",
+      "\\(1000x - 10x\\)",
+      "\\(10000x - 10x\\)",
+      "\\(10000x - 100x\\)",
+      "\\(10x - x\\)"
+    ],
+    correctIndex: 3 // (10000x - 100x)
+  },
+  {
+    question: "순환소수 \\(x = 2.1\\dot{2}\\dot{3}\\)를 분수로 나타낼 때 가장 편리한 식은?",
+    choices: [
+      "\\(100x - x\\)",
+      "\\(1000x - 10x\\)",
+      "\\(10000x - 100x\\)",
+      "\\(10000x - 10x\\)",
+      "\\(1000x - x\\)"
+    ],
+    correctIndex: 1 // (1000x - 10x)
+  }
+];
+
+// 전송 함수 (문제에서 요구된 코드)
+function saveData(game, name, score, elapsedTime) {
+  const FUNCTION_URL = "https://us-central1-record-f420d.cloudfunctions.net/report";
+  const requestData = {
+    game,
+    name,
+    score: parseInt(score, 10),
+    elapsedTime: parseInt(elapsedTime, 10)
+  };
+
+  try {
+    fetch(FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestData)
+    })
+    .then(response => {
+      return response.json().then(responseData => {
+        if (response.ok) {
+          document.getElementById('response').innerText = 
+            `성공: ${JSON.stringify(responseData, null, 2)}`;
+        } else {
+          document.getElementById('response').innerText = 
+            `오류: ${JSON.stringify(responseData, null, 2)}`;
+        }
+      });
+    })
+    .catch(error => {
+      console.error('요청 실패:', error);
+      document.getElementById('response').innerText = 
+        `네트워크 오류: ${error.message}`;
+    });
+  } catch (error) {
+    console.error('요청 실패:', error);
+    document.getElementById('response').innerText = 
+      `네트워크 오류: ${error.message}`;
+  }
+}
+
+// 배열 셔플 함수
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const r = Math.floor(Math.random() * (i + 1));
+    [array[i], array[r]] = [array[r], array[i]];
+  }
+}
+
+let playerName = "";
+let difficulty = "";
+let timePerQuestion = 0; // 난이도별 제한시간
+let scorePerQuestion = 0; 
+let totalScore = 0;
+let remainingLives = 3;
+let questionIndex = 0; // 0~19까지 진행 후 무작위
+let usedCount = 0; // 20문항 소화했는지 확인
+let totalStartTime;
+let energyTimer;
+let energyLeft; 
+const maxEnergyWidth = 200; 
+
+// 게임 시작
+function startGame() {
+  playerName = document.getElementById('nameInput').value.trim();
+  if(!playerName) {
+    alert("이름을 입력하세요.");
+    return;
+  }
+  const radios = document.getElementsByName('difficulty');
+  let selected = false;
+  for(let r of radios) {
+    if(r.checked) {
+      difficulty = r.value;
+      selected = true;
+      break;
+    }
+  }
+  if(!selected) {
+    alert("난이도를 선택하세요.");
+    return;
+  }
+
+  // 난이도별 설정
+  switch(difficulty) {
+    case "최상":
+      timePerQuestion = 20;
+      scorePerQuestion = 20;
+      break;
+    case "상":
+      timePerQuestion = 30;
+      scorePerQuestion = 15;
+      break;
+    case "중":
+      timePerQuestion = 40;
+      scorePerQuestion = 13;
+      break;
+    case "하":
+      timePerQuestion = 0; // 제한없음
+      scorePerQuestion = 10;
+      break;
+  }
+
+  // 문제 순서 섞기
+  shuffleArray(questionsData);
+
+  totalScore = 0;
+  remainingLives = 3;
+  questionIndex = 0;
+  usedCount = 0;
+  totalStartTime = Date.now();
+
+  document.getElementById('startScreen').style.display = "none";
+  document.getElementById('gameContainer').style.display = "block";
+
+  loadQuestion();
+  updateStatus();
+}
+
+// 문제 불러오기
+function loadQuestion() {
+  if(remainingLives <= 0) {
+    endGame();
+    return;
+  }
+
+  // 20문항을 일단 한 바퀴 다 돌았으면, 그 이후에는 계속 랜덤
+  let idx;
+  if(usedCount < 20) {
+    idx = questionIndex; 
+  } else {
+    idx = Math.floor(Math.random() * 20); 
+  }
+  const qData = questionsData[idx];
+
+  // 보기 섞기
+  let choiceArr = qData.choices.map((c, i) => {
+    return { text: c, index: i };
+  });
+  shuffleArray(choiceArr);
+
+  // 화면에 표시
+  document.getElementById('questionText').innerHTML = qData.question;
+  const choicesDiv = document.getElementById('choices');
+  choicesDiv.innerHTML = "";
+  choiceArr.forEach(obj => {
+    const btn = document.createElement('button');
+    btn.className = "choiceBtn";
+    btn.innerHTML = obj.text;
+    btn.onclick = () => checkAnswer(idx, obj.index, qData.correctIndex);
+    choicesDiv.appendChild(btn);
+  });
+
+  document.getElementById('result').innerText = "";
+  document.getElementById('nextBtn').disabled = true;
+
+  // MathJax 렌더링
+  MathJax.typeset();
+
+  // 시간제한/에너지바 설정
+  if(timePerQuestion > 0) {
+    energyLeft = timePerQuestion;
+    updateEnergyBar();
+    if(energyTimer) clearInterval(energyTimer);
+    energyTimer = setInterval(() => {
+      energyLeft--;
+      updateEnergyBar();
+      if(energyLeft <= 0) {
+        clearInterval(energyTimer);
+        remainingLives--;
+        alert("시간 초과!");
+        if(remainingLives > 0) {
+          document.getElementById('result').innerText = "기회가 1 감소되었습니다.";
+          document.getElementById('nextBtn').disabled = false;
+        } else {
+          endGame();
+        }
+      }
+    }, 1000);
+  } else {
+    // 하 난이도(무제한)
+    document.querySelector('.energyFill').style.width = maxEnergyWidth + "px";
+  }
+}
+
+// 정답 확인
+function checkAnswer(qIdx, chosenIndex, correctIndex) {
+  // 이미 답을 골랐다면 중복선택 방지
+  if(!document.getElementById('nextBtn').disabled) return;
+
+  clearInterval(energyTimer);
+
+  const isCorrect = (chosenIndex === correctIndex);
+  if(isCorrect) {
+    totalScore += scorePerQuestion;
+    document.getElementById('result').innerText = "정답!";
+  } else {
+    remainingLives--;
+    // 정답 표시
+    const correctText = questionsData[qIdx].choices[correctIndex];
+    document.getElementById('result').innerText = "오답! 정답은: " + correctText;
+  }
+  document.getElementById('nextBtn').disabled = false;
+  updateStatus();
+}
+
+// 다음 문제 버튼
+function nextQuestion() {
+  if(document.getElementById('nextBtn').disabled) return;
+  if(remainingLives <= 0) {
+    endGame();
+    return;
+  }
+  questionIndex++;
+  usedCount++;
+  loadQuestion();
+  updateStatus();
+}
+
+// 상태 업데이트
+function updateStatus() {
+  document.getElementById('livesInfo').innerText = "남은 기회: " + remainingLives;
+  document.getElementById('scoreInfo').innerText = "점수: " + totalScore;
+
+  // 전체 경과시간
+  const now = Date.now();
+  const elapsedSec = Math.floor((now - totalStartTime) / 1000);
+  document.getElementById('timeInfo').innerText = "전체 경과시간: " + elapsedSec + "초";
+}
+
+// 에너지바 갱신
+function updateEnergyBar() {
+  const bar = document.querySelector('.energyFill');
+  if(timePerQuestion > 0) {
+    const ratio = energyLeft / timePerQuestion;
+    bar.style.width = Math.floor(maxEnergyWidth * ratio) + "px";
+  } else {
+    bar.style.width = maxEnergyWidth + "px";
+  }
+}
+
+// 게임 종료
+function endGame() {
+  clearInterval(energyTimer);
+  document.getElementById('gameContainer').style.display = "none";
+  document.getElementById('endScreen').style.display = "block";
+  document.getElementById('finalScore').innerText = "최종 점수: " + totalScore;
+}
+
+// 점수전송
+function sendScore() {
+  const now = Date.now();
+  const elapsedSec = Math.floor((now - totalStartTime) / 1000);
+  saveData("유리수 순환소수 빈출 (4)", playerName, totalScore, elapsedSec);
+}
+</script>
+</head>
+<body>
+
+<div id="startScreen">
+  <h2>유리수 순환소수 빈출 (4)</h2>
+  <label>이름: <input type="text" id="nameInput"></label><br><br>
+  난이도 선택:<br>
+  <label><input type="radio" name="difficulty" value="최상">최상(20초)</label><br>
+  <label><input type="radio" name="difficulty" value="상">상(30초)</label><br>
+  <label><input type="radio" name="difficulty" value="중">중(40초)</label><br>
+  <label><input type="radio" name="difficulty" value="하">하(시간제한없음)</label><br><br>
+  <button onclick="startGame()">시작하기</button>
+</div>
+
+<div id="gameContainer">
+  <div>
+    <span id="livesInfo"></span> | 
+    <span id="scoreInfo"></span> | 
+    <span id="timeInfo"></span>
+  </div>
+  <div class="energyBar">
+    <div class="energyFill"></div>
+  </div>
+
+  <div id="questionText" style="margin:15px 0;"></div>
+  <div id="choices"></div>
+  <div id="result" style="margin:10px 0; font-weight:bold;"></div>
+  <button id="nextBtn" onclick="nextQuestion()">다음 문제</button>
+</div>
+
+<div id="endScreen">
+  <h3>게임 종료</h3>
+  <div id="finalScore"></div>
+  <button onclick="sendScore()">점수전송</button>
+  <div id="response" style="white-space:pre;"></div>
+</div>
+
+</body>
+</html>
